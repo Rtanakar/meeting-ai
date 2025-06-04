@@ -96,7 +96,8 @@ const DashboardUserButton = () => {
           />
         )}
         <div className="flex flex-col gap-0.5 text-left overflow-hidden flex-1 min-w-0">
-          <p className="text-sm truncate w-full">{data.user.email}</p>
+          <p className="text-sm">{data.user.name}</p>
+          <p className="text-xs truncate w-full">{data.user.email}</p>
         </div>
         <ChevronDownIcon className="size-4 shrink-0" />
       </DropdownMenuTrigger>

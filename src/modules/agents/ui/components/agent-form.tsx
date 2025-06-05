@@ -23,37 +23,43 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 interface AgentFormProps {
-  onSuccess?: () => void;
-  onCancel?: () => void;
-  initialValues?: AgentGetOne;
+  onSuccess?: () => void; // Callback after successful submission
+  onCancel?: () => void; // Callback when form is canceled
+  initialValues?: AgentGetOne; // Pre-filled values for edit mode
 }
 
 const AgentForm = ({ onSuccess, onCancel, initialValues }: AgentFormProps) => {
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const trpc = useTRPC(); // useTRPC(): TRPC क्लाइंट को एक्सेस करने के लिए
+  const queryClient = useQueryClient(); // useQueryClient(): React Query क्लाइंट को एक्सेस करने के लिए
 
+  // म्यूटेशन लॉजिक (createAgent)
+  // useMutation(): डेटा म्यूटेशन (create/update) के लिए
   const createAgent = useMutation(
     trpc.agents.create.mutationOptions({
       onSuccess: async () => {
+        // Refresh agent lists in cache
         await queryClient.invalidateQueries(trpc.agents.getMany.queryOptions());
 
+        // Additional cache invalidation for edit mode
         if (initialValues?.id) {
           await queryClient.invalidateQueries(
             trpc.agents.getOne.queryOptions({ id: initialValues.id })
           );
         }
-        onSuccess?.();
+        onSuccess?.(); // सफलता कॉलबैक // Success callback
       },
       onError: (error) => {
-        toast.error(error.message);
+        toast.error(error.message); // Error notification
 
         // TODO: Check if error code is "FORBIDDEN", redirect to "/upgrade"
       },
     })
   );
 
+  // फॉर्म सेटअप
+  // useForm(): फॉर्म स्टेट और वैलिडेशन के लिए
   const form = useForm<z.infer<typeof agentsInsertSchema>>({
-    resolver: zodResolver(agentsInsertSchema),
+    resolver: zodResolver(agentsInsertSchema), // Zod वैलिडेशन // Zod validation
     defaultValues: {
       name: initialValues?.name ?? "",
       instructions: initialValues?.instructions ?? "",
@@ -63,22 +69,26 @@ const AgentForm = ({ onSuccess, onCancel, initialValues }: AgentFormProps) => {
   const isEdit = !!initialValues?.id;
   const isPending = createAgent.isPending;
 
+  // सबमिट हैंडलर
   const onSubmit = (values: z.infer<typeof agentsInsertSchema>) => {
     if (isEdit) {
-      console.log("TODO: updateAgent");
+      console.log("TODO: updateAgent"); // अपडेट लॉजिक (भविष्य के लिए) // Placeholder for update functionality
     } else {
-      createAgent.mutate(values);
+      createAgent.mutate(values); // नया एजेंट बनाएं // Create new agent
     }
   };
 
   return (
     <Form {...form}>
       <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+        {/* एजेंट के नाम के आधार पर ऑटो-जनरेटेड अवतार */}
         <GeneratedAvatar
           seed={form.watch("name")}
           variant="botttsNeutral"
           className="border size-16"
         />
+
+        {/* नाम फील्ड: */}
         <FormField
           name="name"
           control={form.control}
@@ -92,6 +102,8 @@ const AgentForm = ({ onSuccess, onCancel, initialValues }: AgentFormProps) => {
             </FormItem>
           )}
         />
+
+        {/* निर्देश फील्ड: */}
         <FormField
           name="instructions"
           control={form.control}
@@ -109,6 +121,7 @@ const AgentForm = ({ onSuccess, onCancel, initialValues }: AgentFormProps) => {
           )}
         />
 
+        {/* बटन समूह: */}
         <div className="flex justify-between gap-x-2">
           {onCancel && (
             <Button

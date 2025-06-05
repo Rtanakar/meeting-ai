@@ -7,6 +7,13 @@ import GeneratedAvatar from "@/components/generated-avatar";
 import { CornerDownRightIcon, VideoIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+
+// Type Safety:
+
+// Uses ColumnDef<AgentGetOne> to ensure columns match the agent data type
+
+// All property accesses (name, instructions, meetingCount) are type-checked
+
 export const columns: ColumnDef<AgentGetOne>[] = [
   {
     accessorKey: "name",
@@ -33,12 +40,14 @@ export const columns: ColumnDef<AgentGetOne>[] = [
   {
     accessorKey: "meetingCount",
     header: "Meetings",
-    cell: () => (
+    cell: ({ row }) => (
       <Badge
         variant="outline"
         className="flex items-center gap-x-2 [&>svg]:size-4"
       >
-        <VideoIcon className="text-blue-700" />5 meetings
+        <VideoIcon className="text-blue-700" />
+        {row.original.meetingCount}{" "}
+        {row.original.meetingCount === 1 ? "meeting" : "meetings"}
       </Badge>
     ),
   },

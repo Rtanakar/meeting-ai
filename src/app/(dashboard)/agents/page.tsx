@@ -13,8 +13,16 @@ import AgentListHeader from "@/modules/agents/ui/components/agent-list-header";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers"; // headers(): server पर current HTTP headers access करता है।
 import { redirect } from "next/navigation"; // redirect(): server पर तुरंत redirect करता है।
+import type { SearchParams } from "nuqs";
+import { loadSearchParams } from "@/modules/agents/params";
 
-const Page = async () => {
+interface Props {
+  searchParams: Promise<SearchParams>;
+}
+
+const Page = async ({ searchParams }: Props) => {
+  const filters = await loadSearchParams(searchParams);
+
   //   🔹 सबसे पहले:
   // - यह check करता है कि current user logged in है या नहीं।
   // - auth.api.getSession() headers के साथ session देता है।
@@ -32,7 +40,9 @@ const Page = async () => {
   // - trpc.agents.getMany query को पहले से ही prefetch कर लिया जाता है ताकि page तेज़ी से load हो।
 
   const queryClient = getQueryClient();
-  void queryClient.prefetchQuery(trpc.agents.getMany.queryOptions());
+  void queryClient.prefetchQuery(
+    trpc.agents.getMany.queryOptions({ ...filters })
+  );
 
   return (
     <>

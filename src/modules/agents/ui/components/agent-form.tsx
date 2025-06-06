@@ -38,7 +38,7 @@ const AgentForm = ({ onSuccess, onCancel, initialValues }: AgentFormProps) => {
     trpc.agents.create.mutationOptions({
       onSuccess: async () => {
         // Refresh agent lists in cache
-        await queryClient.invalidateQueries(trpc.agents.getMany.queryOptions());
+        await queryClient.invalidateQueries(trpc.agents.getMany.queryOptions({}));
 
         // Additional cache invalidation for edit mode
         if (initialValues?.id) {

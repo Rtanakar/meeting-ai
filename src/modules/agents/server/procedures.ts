@@ -6,7 +6,13 @@ import { agents } from "@/db/schema"; // agents: एजेंट्स टेब
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { agentsInsertSchema } from "../schemas";
 import { z } from "zod";
-import { eq, getTableColumns, sql } from "drizzle-orm";
+import { and, count, desc, eq, getTableColumns, ilike, sql } from "drizzle-orm";
+import {
+  DEFAULT_PAGE,
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+  MIN_PAGE_SIZE,
+} from "@/constants";
 
 export const agentsRouter = createTRPCRouter({
   // इसका मतलब है कि getOne एंडपॉइंट को एक्सेस करने के लिए यूजर को लॉगिन होना आवश्यक है।
@@ -27,17 +33,57 @@ export const agentsRouter = createTRPCRouter({
     }),
 
   // getMany - सभी एजेंट्स की सूची प्राप्त करना
-  getMany: protectedProcedure.query(async () => {
-    const data = await db
-      .select({
-        // TODO: Change to actual count
-        meetingCount: sql<number>`3`,
-        ...getTableColumns(agents),
+  getMany: protectedProcedure
+    .input(
+      z.object({
+        page: z.number().default(DEFAULT_PAGE),
+        pageSize: z
+          .number()
+          .min(MIN_PAGE_SIZE)
+          .max(MAX_PAGE_SIZE)
+          .default(DEFAULT_PAGE_SIZE),
+        search: z.string().nullish(),
       })
-      .from(agents);
+    )
+    .query(async ({ ctx, input }) => {
+      const { search, page, pageSize } = input;
 
-    return data; // सभी एजेंट्स की सूची
-  }),
+      const data = await db
+        .select({
+          // TODO: Change to actual count
+          meetingCount: sql<number>`3`,
+          ...getTableColumns(agents),
+        })
+        .from(agents)
+        .where(
+          and(
+            eq(agents.userId, ctx.auth.user.id),
+            search ? ilike(agents.name, `%${search}%`) : undefined
+          )
+        )
+        .orderBy(desc(agents.createdAt), desc(agents.id))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
+
+      const [total] = await db
+        .select({ count: count() })
+        .from(agents)
+        .where(
+          and(
+            eq(agents.userId, ctx.auth.user.id),
+            search ? ilike(agents.name, `%${search}%`) : undefined
+          )
+        );
+
+      const totalPages = Math.ceil(total.count / pageSize);
+
+      return {
+        // सभी एजेंट्स की सूची
+        items: data,
+        total: total.count,
+        totalPages,
+      };
+    }),
 
   // create - नया एजेंट बनाना
   create: protectedProcedure

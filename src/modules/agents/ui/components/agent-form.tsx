@@ -36,9 +36,32 @@ const AgentForm = ({ onSuccess, onCancel, initialValues }: AgentFormProps) => {
   // useMutation(): डेटा म्यूटेशन (create/update) के लिए
   const createAgent = useMutation(
     trpc.agents.create.mutationOptions({
-      onSuccess: async () => {
+      onSuccess: async (success) => {
         // Refresh agent lists in cache
-        await queryClient.invalidateQueries(trpc.agents.getMany.queryOptions({}));
+        await queryClient.invalidateQueries(
+          trpc.agents.getMany.queryOptions({})
+        );
+
+        // TODO: Invalidate free tier usage
+
+        onSuccess?.(); // सफलता कॉलबैक // Success callback
+        toast.success(`Created ${success.name} Successfully`);
+      },
+      onError: (error) => {
+        toast.error(error.message); // Error notification
+
+        // TODO: Check if error code is "FORBIDDEN", redirect to "/upgrade"
+      },
+    })
+  );
+
+  const updateAgent = useMutation(
+    trpc.agents.update.mutationOptions({
+      onSuccess: async (success) => {
+        // Refresh agent lists in cache
+        await queryClient.invalidateQueries(
+          trpc.agents.getMany.queryOptions({})
+        );
 
         // Additional cache invalidation for edit mode
         if (initialValues?.id) {
@@ -47,6 +70,7 @@ const AgentForm = ({ onSuccess, onCancel, initialValues }: AgentFormProps) => {
           );
         }
         onSuccess?.(); // सफलता कॉलबैक // Success callback
+        toast.success(`Updated ${success.name} Successfully`);
       },
       onError: (error) => {
         toast.error(error.message); // Error notification
@@ -67,12 +91,12 @@ const AgentForm = ({ onSuccess, onCancel, initialValues }: AgentFormProps) => {
   });
 
   const isEdit = !!initialValues?.id;
-  const isPending = createAgent.isPending;
+  const isPending = createAgent.isPending || updateAgent.isPending;
 
   // सबमिट हैंडलर
   const onSubmit = (values: z.infer<typeof agentsInsertSchema>) => {
     if (isEdit) {
-      console.log("TODO: updateAgent"); // अपडेट लॉजिक (भविष्य के लिए) // Placeholder for update functionality
+      updateAgent.mutate({ ...values, id: initialValues.id });
     } else {
       createAgent.mutate(values); // नया एजेंट बनाएं // Create new agent
     }

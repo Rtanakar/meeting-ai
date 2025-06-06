@@ -13,13 +13,14 @@ import {
   MAX_PAGE_SIZE,
   MIN_PAGE_SIZE,
 } from "@/constants";
+import { TRPCError } from "@trpc/server";
 
 export const agentsRouter = createTRPCRouter({
   // इसका मतलब है कि getOne एंडपॉइंट को एक्सेस करने के लिए यूजर को लॉगिन होना आवश्यक है।
   // getOne - एक एजेंट की जानकारी प्राप्त करना
   getOne: protectedProcedure
     .input(z.object({ id: z.string() })) // ID की जाँच
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const [existingAgent] = await db
         .select({
           // TODO: Change to actual count
@@ -27,7 +28,13 @@ export const agentsRouter = createTRPCRouter({
           ...getTableColumns(agents), // टेबल के सभी कॉलम
         })
         .from(agents)
-        .where(eq(agents.id, input.id)); // दिए गए ID से खोजें
+        .where(
+          and(eq(agents.id, input.id), eq(agents.userId, ctx.auth.user.id))
+        ); // दिए गए ID से खोजें
+
+      if (!existingAgent) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agent not fount" });
+      }
 
       return existingAgent; // एजेंट डेटा वापस करें
     }),
